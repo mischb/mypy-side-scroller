@@ -3,14 +3,15 @@ import time
 import pygame
 import random
 import math
-from gamedefs import color_definitions, move_ship, Line
 
 pygame.init()
-
 display_width = 800
 display_height = 600
+from tools import possibleTrajectory
+from gamedefs import color_definitions, move_ship, Line, getMaxHeight
 
 ship_img = pygame.image.load('rocket.png')
+bang_img = pygame.image.load('bang.png')
 ship_midpoint = ((ship_img.get_rect().size[1]) / 2) 
 ship_ht_offset = 20
 gameDisplay = pygame.display.set_mode((display_width, display_height))
@@ -19,7 +20,8 @@ clock = pygame.time.Clock()
 
   
 def ship(shipX,shipY):
-  gameDisplay.blit(ship_img, (shipX, shipY))
+    gameDisplay.blit(ship_img, (shipX, shipY))
+
 
 def text_objects(text, font):
   textSurface = font.render(text, True, color_definitions['black'])
@@ -64,61 +66,62 @@ def crashed():
 def scoreCounter(score):
   message_display(("score: " + str(score)), 50, (display_width/2, 20))
 
+# top / bottom
+# return 0 means start at top, else start at bottom
+def newLineStartingPosition(startPosition):
+  if (not startPosition['top']) & (not startPosition['bottom']):
+    randInt = random.randint(0,1)
+    if randInt == 0:
+      startPosition['top'] += 1
+    else:
+       startPosition['bottom'] += 1
+  # as either increases, increase chances of opposite side being chosen
+  if startPosition['top']:
+    randInt = random.randint(0, int(startPosition['top'] * 1.5))
+    # print('start position top: ' + str(startPosition['top']) + ' randInt: ' + str(randInt))
+    if randInt == 0:
+      startPosition['top'] += 1
+      return 0
+    else:
+      startPosition['top'] = 0
+      startPosition['bottom'] += 1
+      return 1
+  else:
+    randInt = random.randint(0, int(startPosition['bottom']*1.5))
+    # print('start position bottom: ' + str(startPosition['bottom']) + ' randInt: ' + str(randInt))
+    if randInt == 0:
+      startPosition['bottom'] += 1
+      return 1
+    else:
+      startPosition['bottom'] = 0
+      startPosition['top'] += 1
+      return 0
+
+  
 
 # max height is 80-85% of safe zone from line prev to following line
-def getMaxHeight(prevLine, slope, distanceBtwnLines, topOrBottom ):
-  if ((topOrBottom == 0) & (prevLine.y != 0)) or ((topOrBottom == 1 ) & ( prevLine.y == 0)):
-    if prevLine.y == 0:
-      prevSafeZone = prevLine.height + 100
-      slope *= -1
-    else:
-      prevSafeZone = prevLine.y - 100
-    #  y = mx + b    --> b = y - mx
-    yIntercept = (prevSafeZone - (slope * prevLine.x))
-
-    shipAtNextLine = (slope * (prevLine.x + distanceBtwnLines)) + yIntercept
-    # print('ship at next line:' + str(shipAtNextLine))
-    max_height = (display_height - shipAtNextLine) * 0.8
-
-    # print('slope is :' + str(slope))
-    if slope > 0:
-      max_height = display_height - max_height
-
-    if shipAtNextLine > display_height or shipAtNextLine <= 0:
-      max_height = 500
-    if max_height > 500:
-      max_height = 500
 
 
-  else:
-    # print('same starting point')
-    max_height = 500
-  return int(max_height)
-# determine where line should start
-
-# startingPositionList = []
-
-# def lineStartingPoint(lineList):
-#   # the longer prevLines list is the higher the return number
-#   # check whether lines start at top or bottom
-#   if not startingPositionList:
-
-
-
-def createLine(rocketSpeed, lineSpeed, lineList):
-  distanceBtwnLines = 250
+def createLine(rocketSpeed, lineSpeed, lineList, startPosition):
+  distanceBtwnLines = random.randint(100, 300)
 
   startX = display_width+distanceBtwnLines
-
   slope = rocketSpeed / lineSpeed 
+    
   # increase the chances of opposite side 
-  topOrBottom = random.randint(0,1)
+
+  # todo: define algorithm to increase likelihood of new line on opposite side
+  topOrBottom = newLineStartingPosition(startPosition)
   # set line to start at top or bottom of screen
   max_height = None
   if lineList:
     max_height = getMaxHeight(lineList[-1], slope, distanceBtwnLines, topOrBottom)
     # print(max_height)
-    startX = lineList[-1].x + distanceBtwnLines
+    if (lineList[-1].x + distanceBtwnLines) < display_width:
+      startX = display_width + 10
+    else:
+      startX = lineList[-1].x + distanceBtwnLines
+    # startX = display_width + distanceBtwnLines
   if not max_height:
     max_height = 500
   
@@ -126,7 +129,7 @@ def createLine(rocketSpeed, lineSpeed, lineList):
   line_height = random.randrange(100, max_height)
   
   if topOrBottom == 0:
-    startY = 0
+    startY = 0 # start at top
   else:
     startY = 600-line_height
   
@@ -134,11 +137,11 @@ def createLine(rocketSpeed, lineSpeed, lineList):
   return line
 
 
-def createLinesList(numberOfLines, rocketSpeed, lineSpeed):
+def createLinesList(numberOfLines, rocketSpeed, lineSpeed, startPosition):
   lineList = []
   counter = 0
   while counter < numberOfLines:
-    line = createLine(rocketSpeed, lineSpeed, lineList)
+    line = createLine(rocketSpeed, lineSpeed, lineList, startPosition)
     line.number = counter
     lineList.append(line)
     counter += 1
@@ -156,13 +159,19 @@ def game_loop():
 
   line_speed = 8
   rocketSpeed = 10
-  lines = createLinesList(4, rocketSpeed, line_speed)
+  startPosition = {'top': 0, 'bottom': 0}
+
+  lines = createLinesList(4, rocketSpeed, line_speed, startPosition)
 
   prevScore = 0
   score = 0
-
   while not gameExit:
-
+    # if rocketSpeed != 0:
+    #   slope = rocketSpeed / line_speed 
+    # else: 
+    #   slope = 1
+    # shipTrajectoryStart, shipTrajectoryEnd = possibleTrajectory(lines[0], lines[1], slope)
+    # pygame.draw.line(gameDisplay, color_definitions["black"], shipTrajectoryStart, shipTrajectoryEnd, 3)
     if didCrash:
       line_speed = 0
       scoreCounter(score)
@@ -197,7 +206,7 @@ def game_loop():
         if line.x < 0:
           lines.remove(line)
           number = line.number
-          line = createLine(rocketSpeed, line_speed, lines)
+          line = createLine(rocketSpeed, line_speed, lines, startPosition)
           line.number = number
           lines.append(line)
       if didCrash:
@@ -228,11 +237,10 @@ quit()
     # startLine, endLine = bestPath(lines[0], lines[1])
     # nextStart, nextEnd =  bestPath(lines[1], lines[2])
 
-    # shipTrajectoryStart, shipTrajectoryEnd = possibleTrajectory(lines[0], lines[1], slope)
+   
     # shipTrajectoryStart2, shipTrajectoryEnd2 = possibleTrajectory(lines[1], lines[2], slope)
     # pygame.draw.line(gameDisplay, color_definitions["red"], startLine, endLine, 3)
     # pygame.draw.line(gameDisplay, color_definitions["red"], nextStart, nextEnd, 3)
-    # pygame.draw.line(gameDisplay, color_definitions["black"], shipTrajectoryStart, shipTrajectoryEnd, 3)
     # pygame.draw.line(gameDisplay, color_definitions["black"], shipTrajectoryStart2, shipTrajectoryEnd2, 3)
     # pygame.draw.line(gameDisplay, color_definitions["black"], (5,0), (5,display_height), 5)
     # pygame.draw.line(gameDisplay, color_definitions["black"], (0,display_height-5), (display_width,display_height-5), 5)
