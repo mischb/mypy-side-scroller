@@ -3,7 +3,7 @@ import time
 import pygame
 import random
 import math
-from tools import color_definitions, move_ship, Line
+from gamedefs import color_definitions, move_ship, Line
 
 pygame.init()
 
@@ -62,25 +62,24 @@ def crashed():
   # game_loop()
 
 def scoreCounter(score):
-  message_display(("score: " + str(score)), 50, (70, 20))
+  message_display(("score: " + str(score)), 50, (display_width/2, 20))
+
 
 # max height is 80-85% of safe zone from line prev to following line
 def getMaxHeight(prevLine, slope, distanceBtwnLines, topOrBottom ):
-  # if line extends from top length is height / else length is total - height
-  # print('t or b: ' + str(topOrBottom) + ' prev line start: ' + str(prevLine.y))
   if ((topOrBottom == 0) & (prevLine.y != 0)) or ((topOrBottom == 1 ) & ( prevLine.y == 0)):
     if prevLine.y == 0:
-      prevSafeZone = prevLine.height + 25
-    else:
-      prevSafeZone = prevLine.y - 25
+      prevSafeZone = prevLine.height + 100
       slope *= -1
+    else:
+      prevSafeZone = prevLine.y - 100
     #  y = mx + b    --> b = y - mx
     yIntercept = (prevSafeZone - (slope * prevLine.x))
 
     shipAtNextLine = (slope * (prevLine.x + distanceBtwnLines)) + yIntercept
     # print('ship at next line:' + str(shipAtNextLine))
     max_height = (display_height - shipAtNextLine) * 0.8
-    
+
     # print('slope is :' + str(slope))
     if slope > 0:
       max_height = display_height - max_height
@@ -90,10 +89,21 @@ def getMaxHeight(prevLine, slope, distanceBtwnLines, topOrBottom ):
     if max_height > 500:
       max_height = 500
 
+
   else:
     # print('same starting point')
     max_height = 500
   return int(max_height)
+# determine where line should start
+
+# startingPositionList = []
+
+# def lineStartingPoint(lineList):
+#   # the longer prevLines list is the higher the return number
+#   # check whether lines start at top or bottom
+#   if not startingPositionList:
+
+
 
 def createLine(rocketSpeed, lineSpeed, lineList):
   distanceBtwnLines = 250
@@ -101,7 +111,7 @@ def createLine(rocketSpeed, lineSpeed, lineList):
   startX = display_width+distanceBtwnLines
 
   slope = rocketSpeed / lineSpeed 
-
+  # increase the chances of opposite side 
   topOrBottom = random.randint(0,1)
   # set line to start at top or bottom of screen
   max_height = None
@@ -151,10 +161,8 @@ def game_loop():
   prevScore = 0
   score = 0
 
-
   while not gameExit:
 
-    # event handling loop
     if didCrash:
       line_speed = 0
       scoreCounter(score)
@@ -192,7 +200,6 @@ def game_loop():
           line = createLine(rocketSpeed, line_speed, lines)
           line.number = number
           lines.append(line)
-        
       if didCrash:
         crashed()
 
@@ -212,3 +219,37 @@ def game_loop():
 game_loop()
 pygame.quit()
 quit()
+
+
+    # if rocketSpeed != 0:
+    #   slope = rocketSpeed / line_speed 
+    # else: 
+    #   slope = 1
+    # startLine, endLine = bestPath(lines[0], lines[1])
+    # nextStart, nextEnd =  bestPath(lines[1], lines[2])
+
+    # shipTrajectoryStart, shipTrajectoryEnd = possibleTrajectory(lines[0], lines[1], slope)
+    # shipTrajectoryStart2, shipTrajectoryEnd2 = possibleTrajectory(lines[1], lines[2], slope)
+    # pygame.draw.line(gameDisplay, color_definitions["red"], startLine, endLine, 3)
+    # pygame.draw.line(gameDisplay, color_definitions["red"], nextStart, nextEnd, 3)
+    # pygame.draw.line(gameDisplay, color_definitions["black"], shipTrajectoryStart, shipTrajectoryEnd, 3)
+    # pygame.draw.line(gameDisplay, color_definitions["black"], shipTrajectoryStart2, shipTrajectoryEnd2, 3)
+    # pygame.draw.line(gameDisplay, color_definitions["black"], (5,0), (5,display_height), 5)
+    # pygame.draw.line(gameDisplay, color_definitions["black"], (0,display_height-5), (display_width,display_height-5), 5)
+
+    # counter = 0
+    # while counter < display_height:
+    #   message_display(str(counter), 20, (25, counter))
+    #   counter += 50
+    # counter = 0
+    # while counter < display_height:
+    #   message_display(str(counter), 20, (25, counter))
+    #   counter += 50
+    
+    # counter = 0
+    # while counter < display_width:
+    #   message_display(str(counter), 20, (counter, display_height - 20))
+    #   counter += 50
+    
+    # pygame.draw.line(gameDisplay, color_definitions["red"], nextStart, nextEnd, 3)
+    # event handling loop
